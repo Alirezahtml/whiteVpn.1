@@ -1,0 +1,6 @@
+{
+  "name": "WhiteVPN",
+  "description": "WhiteVPN Android application",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

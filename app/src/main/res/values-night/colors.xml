@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors (Vibrant Spatial Electric Blue) -->
+    <color name="whitedns_primary">#0A84FF</color>
+    <color name="whitedns_on_primary">#FFFFFF</color>
+    <color name="whitedns_primary_container">#0E2A50</color>
+    <color name="whitedns_on_primary_container">#D8E8FF</color>
+
+    <!-- Secondary colors (Deep Spatial Violet) -->
+    <color name="whitedns_secondary">#5E5CE6</color>
+
+    <!-- Background and surface (True Pure Black OLED + Deep Glass) -->
+    <color name="whitedns_background">#000000</color>
+    <color name="whitedns_surface">#0A0E17</color>
+    <color name="whitedns_surface_variant">#141B29</color>
+
+    <!-- Surface elevations (Subtle luminous elevation steps) -->
+    <color name="surface_elevated_1">#101624</color>
+    <color name="surface_elevated_2">#182033</color>
+    <color name="surface_elevated_3">#202B42</color>
+
+    <!-- On surface colors (Crisp contrast) -->
+    <color name="whitedns_on_surface">#F5F8FC</color>
+    <color name="whitedns_on_surface_variant">#A2B0C4</color>
+
+    <!-- Text hierarchy -->
+    <color name="text_tertiary">#6C7D93</color>
+    <color name="text_muted">#475569</color>
+
+    <!-- Outline (Hairline frosted glass border) -->
+    <color name="whitedns_outline">#1F293D</color>
+
+    <!-- Error (Crisp Apple Red) -->
+    <color name="whitedns_error">#FF453A</color>
+
+    <!-- State container colors -->
+    <color name="teal_container">#0A2540</color>
+    <color name="amber_container">#3D2600</color>
+    <color name="red_container">#421210</color>
+
+    <!-- Gradient colors (Deep Space Void to Luminous Cyber Blue) -->
+    <color name="background_gradient_start">#000000</color>
+    <color name="background_gradient_end">#070B12</color>
+    <color name="accent_gradient_start">#0A84FF</color>
+    <color name="accent_gradient_end">#64D2FF</color>
+</resources>

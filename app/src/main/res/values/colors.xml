@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary colors (Luxury Electric Blue / iOS Style) -->
+    <color name="whitedns_primary">#0066FF</color>
+    <color name="whitedns_on_primary">#FFFFFF</color>
+    <color name="whitedns_primary_container">#E5EFFF</color>
+    <color name="whitedns_on_primary_container">#001C47</color>
+
+    <!-- Secondary colors (Spatial Indigo / Purple) -->
+    <color name="whitedns_secondary">#5E5CE6</color>
+
+    <!-- Background and surface (Clean iOS Ice Slate) -->
+    <color name="whitedns_background">#F4F6FB</color>
+    <color name="whitedns_surface">#FFFFFF</color>
+    <color name="whitedns_surface_variant">#E6EAF2</color>
+
+    <!-- Surface elevations (Spatial Glass Layers) -->
+    <color name="surface_elevated_1">#F8FAFD</color>
+    <color name="surface_elevated_2">#EDF2F9</color>
+    <color name="surface_elevated_3">#E2E8F4</color>
+
+    <!-- On surface colors -->
+    <color name="whitedns_on_surface">#0C121D</color>
+    <color name="whitedns_on_surface_variant">#4A5568</color>
+
+    <!-- Text hierarchy -->
+    <color name="text_tertiary">#718096</color>
+    <color name="text_muted">#A0AEC0</color>
+
+    <!-- Outline (Ultra-fine spatial border) -->
+    <color name="whitedns_outline">#D2D9E5</color>
+
+    <!-- Error -->
+    <color name="whitedns_error">#FF3B30</color>
+
+    <!-- State container colors -->
+    <color name="teal_container">#E0F4FF</color>
+    <color name="amber_container">#FFF3DC</color>
+    <color name="red_container">#FFE8E6</color>
+
+    <!-- Gradient colors (Luxury Sapphire to Diamond Blue) -->
+    <color name="background_gradient_start">#F4F6FB</color>
+    <color name="background_gradient_end">#FFFFFF</color>
+    <color name="accent_gradient_start">#0066FF</color>
+    <color name="accent_gradient_end">#00C6FF</color>
+</resources>

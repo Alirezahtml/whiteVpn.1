@@ -1,0 +1,180 @@
+import java.io.File
+import java.util.Properties
+
+plugins {
+    id("com.android.application")
+    id("com.google.gms.google-services")
+    id("org.jetbrains.kotlin.android")
+}
+
+val releaseSigningPropertiesFile = rootProject.file("keystore.properties")
+val releaseSigningProperties = Properties().apply {
+    if (releaseSigningPropertiesFile.isFile) {
+        releaseSigningPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun releaseSigningValue(propertyName: String, environmentName: String): String? {
+    return System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+        ?: releaseSigningProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+        ?: releaseSigningProperties.getProperty("release.$propertyName")?.takeIf { it.isNotBlank() }
+}
+
+fun releaseStoreFile(path: String) = File(path).let { candidate ->
+    if (candidate.isAbsolute) candidate else rootProject.file(path)
+}
+
+// Payload decryption keys. These used to be literals in WhiteDnsConfig.kt, which put them in every
+// APK and in the git history. They are injected at build time instead — see secrets.properties.example.
+val payloadSecretsFile = rootProject.file("secrets.properties")
+val payloadSecrets = Properties().apply {
+    if (payloadSecretsFile.isFile) {
+        payloadSecretsFile.inputStream().use { load(it) }
+    }
+}
+
+fun payloadSecret(propertyName: String, environmentName: String): String {
+    return System.getenv(environmentName)?.takeIf { it.isNotBlank() }
+        ?: payloadSecrets.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+        ?: ""
+}
+
+fun httpsBuildUrl(environmentName: String, defaultValue: String): String {
+    return (System.getenv(environmentName)?.takeIf { it.isNotBlank() } ?: defaultValue).also {
+        require(it.startsWith("https://")) { "$environmentName must use HTTPS" }
+    }
+}
+
+val mihomoSubscriptionUrl = httpsBuildUrl(
+    "WHITEDNS_MIHOMO_SUBSCRIPTION_URL",
+    "https://raw.githubusercontent.com/iampedii/whitedns-sub/refs/heads/main/mihomo.yaml",
+)
+val privateMihomoSubscriptionUrl = (
+    System.getenv("WHITEDNS_PRIVATE_MIHOMO_SUBSCRIPTION_URL")?.takeIf { it.isNotBlank() }
+        ?: payloadSecrets.getProperty("privateMihomoSubscriptionUrl")?.takeIf { it.isNotBlank() }
+        ?: "https://example.com/private-subscription"
+    ).also {
+    require(it.startsWith("https://")) {
+        "WHITEDNS_PRIVATE_MIHOMO_SUBSCRIPTION_URL must use HTTPS"
+    }
+}
+val encryptedIpListUrl = httpsBuildUrl(
+    "WHITEDNS_ENCRYPTED_IP_LIST_URL",
+    "https://whitedns-encrypted-ip-list.whitedns.workers.dev/v1/results/ips/encrypted",
+)
+val mihomoSubscriptionKey = payloadSecret("mihomoSubscriptionKey", "WHITEDNS_MIHOMO_SUBSCRIPTION_KEY")
+val encryptedIpListKey = payloadSecret("encryptedIpListKey", "WHITEDNS_ENCRYPTED_IP_LIST_KEY")
+val hasPayloadSecrets = mihomoSubscriptionKey.isNotBlank() && encryptedIpListKey.isNotBlank()
+
+fun buildConfigStringLiteral(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\u0024") + "\""
+
+val releaseStoreFilePath = releaseSigningValue("storeFile", "WHITEDNS_RELEASE_STORE_FILE")
+val releaseStorePassword = releaseSigningValue("storePassword", "WHITEDNS_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = releaseSigningValue("keyAlias", "WHITEDNS_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = releaseSigningValue("keyPassword", "WHITEDNS_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
+android {
+    namespace = "com.whitedns.vpn"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.whitedns.vpn"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 81
+        versionName = "1.6.6"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        resourceConfigurations += listOf("en", "fa")
+
+        buildConfigField("String", "MIHOMO_SUBSCRIPTION_URL", buildConfigStringLiteral(mihomoSubscriptionUrl))
+        buildConfigField(
+            "String",
+            "PRIVATE_MIHOMO_SUBSCRIPTION_URL",
+            buildConfigStringLiteral(privateMihomoSubscriptionUrl),
+        )
+        buildConfigField("String", "ENCRYPTED_IP_LIST_URL", buildConfigStringLiteral(encryptedIpListUrl))
+        buildConfigField("String", "MIHOMO_SUBSCRIPTION_KEY", buildConfigStringLiteral(mihomoSubscriptionKey))
+        buildConfigField("String", "ENCRYPTED_IP_LIST_KEY", buildConfigStringLiteral(encryptedIpListKey))
+    }
+
+    signingConfigs {
+        create("debugConfig") {
+            val rootKeystore = file("${rootDir}/debug.keystore")
+            val userKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storeFile = if (rootKeystore.exists()) rootKeystore else userKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseStoreFile(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
+        }
+        release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // CMake and Go already strip release binaries; generated .sym files only duplicate them.
+            ndk.debugSymbolLevel = "NONE"
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.json:json:20240303")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(libs.material)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+
+    testImplementation("junit:junit:4.13.2")
+}

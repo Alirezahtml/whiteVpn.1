@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android Build Tools and NDK
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' || true
+          NDK_DIR=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 | head -n 1)
+          echo "ANDROID_NDK=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          echo "ndk.dir=$NDK_DIR" >> local.properties
+
+      - name: Fix gradlew Line Endings & Exec Permissions
+        run: |
+          sed -i -e 's/\r$//' gradlew
+          chmod +x gradlew
+          chmod +x scripts/*.sh || true
+
+      - name: Build FlClash Native Core (libclash.so for arm64 & arm)
+        run: |
+          ./scripts/build-flclash-core.sh
+
+      # تزریق فایل ساختگی google-services با پکیج نام دقیق com.whitedns.vpn
+      - name: Inject Dummy google-services.json
+        run: |
+          mkdir -p app/src/debug app/src/main app
+          JSON_CONTENT='{
+            "project_info": {"project_number": "123456789012", "project_id": "whitedns-vpn", "storage_bucket": "whitedns-vpn.appspot.com"},
+            "client": [
+              {
+                "client_info": {"mobilesdk_app_id": "1:123456789012:android:1234567890123456", "android_client_info": {"package_name": "com.whitedns.vpn"}},
+                "oauth_client": [],
+                "api_key": [{"current_key": "AIzaSyDummyKeyForBuildOnly"}],
+                "services": {"analytics_service": {"status": 1}}
+              },
+              {
+                "client_info": {"mobilesdk_app_id": "1:123456789012:android:1234567890123457", "android_client_info": {"package_name": "com.whitedns.vpn.debug"}},
+                "oauth_client": [],
+                "api_key": [{"current_key": "AIzaSyDummyKeyForBuildOnly"}],
+                "services": {"analytics_service": {"status": 1}}
+              }
+            ],
+            "configuration_version": "1"
+          }'
+          echo "$JSON_CONTENT" > google-services.json
+          echo "$JSON_CONTENT" > app/google-services.json
+          echo "$JSON_CONTENT" > app/src/debug/google-services.json
+          echo "$JSON_CONTENT" > app/src/main/google-services.json
+
+      - name: Generate Debug Keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || true
+          cp debug.keystore ~/.android/debug.keystore || true
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug -x test -x lint -Pandroid.lint.abortOnError=false --stacktrace --no-daemon
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WhiteVPN-Debug-APK
+          path: "**/build/outputs/apk/debug/*.apk"
